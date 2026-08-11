@@ -1,0 +1,51 @@
+# Python leftovers
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs / temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+*.bak
+
+# Node / Tauri
+node_modules
+dist-ssr
+*.local
+src-tauri/target
+.tauri/
+.cursor/hooks/
+
+# Editor junk
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+test_inspiration/
+superpowers/
+.playwright-mcp/
