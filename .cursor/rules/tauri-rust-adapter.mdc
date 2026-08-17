@@ -1,0 +1,30 @@
+---
+description: Tauri 2 + Rust adapter boundaries for PC Toolkit Pro
+globs: "src-tauri/**/*.{rs,toml,json}"
+alwaysApply: false
+---
+
+# Rust / Tauri adapter
+
+Follow root [`AGENTS.md`](../../AGENTS.md) and Rust [`src-tauri/AGENTS.md`](../../src-tauri/AGENTS.md).
+
+## Boundaries
+
+- `crates/pctoolkit-core`: product domains, safety, scan/cleanup — **no Tauri**.
+- `crates/pctoolkit-platform`: OS facts and capabilities — **no product orchestration**.
+- `src-tauri/src/commands`: thin async adapters only.
+
+## Commands
+
+- Validate transport input → call Core → map typed errors.
+- Emit progress events from Core callbacks; never invent UI strings in Rust for control flow.
+- Register command + capability + frontend service binding in the same change.
+- Prefer `deny_unknown_fields` + camelCase serde for FE payloads.
+- Startup: no long filesystem work before first window paint.
+- Fast/no-hang: blocking Core work only via `spawn_blocking`/`run_blocking`; emit progress; support cancel; return typed `operationBusy` instead of deadlocking.
+
+## Safety
+
+- Destructive ops: preview/scan, protected/denied-path skip, explicit confirmation, honest results.
+- Privileged Windows APIs need an explicit capability boundary; no PowerShell fake memory clean.
+- Logs: operation IDs, counts, timings — not full private paths or file contents.
