@@ -1,0 +1,133 @@
+use pctoolkit_platform::{
+    load_system_information_with_progress, SystemInfoProgress, SystemInformation,
+};
+use serde::Serialize;
+
+use crate::shared::CoreResult;
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemInformationDto {
+    pub uptime: String,
+    pub cpu_name: String,
+    pub cpu_cores: u32,
+    pub cpu_threads: u32,
+    pub cpu_usage: f32,
+    pub cpu_frequency: String,
+    pub cpu_cache: String,
+    pub cpu_socket: String,
+    pub memory_total: u64,
+    pub memory_used: u64,
+    pub memory_available: u64,
+    pub memory_percent: f32,
+    pub ram_name: String,
+    pub ram_type: String,
+    pub ram_speed: String,
+    pub ram_slots_used: String,
+    pub disk_total: u64,
+    pub disk_used: u64,
+    pub disk_free: u64,
+    pub disk_percent: f32,
+    pub disk_device: String,
+    pub disk_type: String,
+    pub gpu_name: String,
+    pub gpu_usage: Option<f32>,
+    pub gpu_memory_used: Option<u64>,
+    pub gpu_memory_total: Option<u64>,
+    pub gpu_temperature: Option<f32>,
+    pub motherboard_product: String,
+    pub motherboard_manufacturer: String,
+    pub motherboard_version: String,
+    pub motherboard: String,
+    pub chipset: String,
+    pub bios: String,
+    pub bios_version: String,
+    pub bios_manufacturer: String,
+    pub bios_date: String,
+    pub system_model: String,
+    pub memory_slots_total: String,
+    pub max_memory_capacity: String,
+    pub os_edition: String,
+    pub os_version: String,
+    pub os_build: String,
+    pub os_experience: String,
+    pub hostname: String,
+    pub username: String,
+    pub monitors: Vec<String>,
+    pub storage_devices: Vec<String>,
+    pub power_supply_name: String,
+    pub power_plan: String,
+    pub power_supplies: Vec<String>,
+    pub batteries: Vec<String>,
+    pub ac_line_status: String,
+    pub copy_text: String,
+}
+
+pub fn get_system_information() -> CoreResult<SystemInformationDto> {
+    get_system_information_with_progress(|_| {})
+}
+
+pub fn get_system_information_with_progress(
+    mut on_progress: impl FnMut(SystemInfoProgress),
+) -> CoreResult<SystemInformationDto> {
+    let info = load_system_information_with_progress(|progress| on_progress(progress))?;
+    Ok(to_dto(info))
+}
+
+fn to_dto(info: SystemInformation) -> SystemInformationDto {
+    SystemInformationDto {
+        uptime: info.uptime,
+        cpu_name: info.cpu_name,
+        cpu_cores: info.cpu_cores,
+        cpu_threads: info.cpu_threads,
+        cpu_usage: info.cpu_usage,
+        cpu_frequency: info.cpu_frequency,
+        cpu_cache: info.cpu_cache,
+        cpu_socket: info.cpu_socket,
+        memory_total: info.memory_total,
+        memory_used: info.memory_used,
+        memory_available: info.memory_available,
+        memory_percent: info.memory_percent,
+        ram_name: info.ram_name,
+        ram_type: info.ram_type,
+        ram_speed: info.ram_speed,
+        ram_slots_used: info.ram_slots_used,
+        disk_total: info.disk_total,
+        disk_used: info.disk_used,
+        disk_free: info.disk_free,
+        disk_percent: info.disk_percent,
+        disk_device: info.disk_device,
+        disk_type: info.disk_type,
+        gpu_name: info.gpu_name,
+        gpu_usage: info.gpu_usage,
+        gpu_memory_used: info.gpu_memory_used,
+        gpu_memory_total: info.gpu_memory_total,
+        gpu_temperature: info.gpu_temperature,
+        motherboard_product: info.motherboard_product,
+        motherboard_manufacturer: info.motherboard_manufacturer,
+        motherboard_version: info.motherboard_version,
+        motherboard: info.motherboard,
+        chipset: info.chipset,
+        bios: info.bios,
+        bios_version: info.bios_version,
+        bios_manufacturer: info.bios_manufacturer,
+        bios_date: info.bios_date,
+        system_model: info.system_model,
+        memory_slots_total: info.memory_slots_total,
+        max_memory_capacity: info.max_memory_capacity,
+        os_edition: info.os_edition,
+        os_version: info.os_version,
+        os_build: info.os_build,
+        os_experience: info.os_experience,
+        hostname: info.hostname,
+        username: info.username,
+        monitors: info.monitors,
+        storage_devices: info.storage_devices,
+        power_supply_name: info.power_supply_name,
+        power_plan: info.power_plan,
+        power_supplies: info.power_supplies,
+        batteries: info.batteries,
+        ac_line_status: info.ac_line_status,
+        copy_text: info.copy_text,
+    }
+}
