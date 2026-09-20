@@ -1,0 +1,68 @@
+:root {
+  /*
+   * Modern Bright & Clean Light Theme for My PC Kit.
+   * Crisp white surfaces, subtle slate borders, vibrant modern blue accents.
+   */
+  --brand-primary: #2563eb;
+  --brand-primary-foreground: #ffffff;
+  --radius: 0.75rem;
+
+  /* Surfaces: Sáng sủa, sạch sẽ, không ngả vàng hay đục */
+  --background: #f8fafc;
+  --workspace: #ffffff;
+  --foreground: #0f172a;
+  
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  
+  --primary: var(--brand-primary);
+  --primary-foreground: var(--brand-primary-foreground);
+  
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+  
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  
+  --border: #e2e8f0;
+  
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #1e293b;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #2563eb;
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --surface-soft: #f8fafc;
+  --shadow-card: 0 2px 10px -2px rgba(15, 23, 42, 0.05), 0 1px 3px -1px rgba(15, 23, 42, 0.03);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #0f172a;
+  --workspace: #1e293b;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --primary: #38bdf8;
+  --primary-foreground: #0f172a;
+  --secondary: #334155;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e3a8a;
+  --accent-foreground: #93c5fd;
+  --destructive: #f87171;
+  --border: #334155;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #38bdf8;
+  --surface-soft: #1e293b;
+  --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.4);
+}
