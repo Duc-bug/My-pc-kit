@@ -1,0 +1,7 @@
+html[data-skin='pctoolkit'],
+:root {
+  --brand-primary: #2563eb;
+  --brand-primary-foreground: #ffffff;
+  --primary: var(--brand-primary);
+  --primary-foreground: var(--brand-primary-foreground);
+}
