@@ -2218,7 +2218,7 @@ dependencies = [
 
 [[package]]
 name = "my-pc-kit"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "log",
  "pctoolkit-core",
@@ -2626,7 +2626,7 @@ dependencies = [
 
 [[package]]
 name = "pctoolkit-core"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "pctoolkit-platform",
@@ -2638,7 +2638,7 @@ dependencies = [
 
 [[package]]
 name = "pctoolkit-platform"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "serde",
  "serde_json",

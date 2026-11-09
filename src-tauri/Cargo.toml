@@ -1,6 +1,6 @@
 [package]
 name = "my-pc-kit"
-version = "1.0.1"
+version = "1.1.0"
 description = "My PC Kit — Windows system manager"
 authors = ["Isado (Nguyễn Thiện Đức)"]
 edition = "2021"
