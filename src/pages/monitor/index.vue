@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, type Component } from 'vue';
+import { computed, ref, onMounted, onUnmounted, type Component } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   Activity,
@@ -33,6 +33,15 @@ const { t } = useI18n();
 const store = useMonitorStore();
 const memory = useMemoryCleanerStore();
 const snap = computed(() => store.snapshot);
+
+const currentDiskIdx = ref(0);
+const activeDisk = computed(() => {
+  const list = snap.value?.disks;
+  if (list && list.length > 0) {
+    return list[currentDiskIdx.value] ?? list[0];
+  }
+  return null;
+});
 
 const ACTION_ICONS: Record<QuickActionId, Component> = {
   taskManager: AppWindow,
@@ -143,14 +152,26 @@ onUnmounted(() => store.stopPolling());
           <span class="icon-wrap icon-wrap--amber">
             <HardDrive :size="18" />
           </span>
-          <span class="card-title">{{ t('monitor.disk') }}</span>
-          <span class="percent-badge">{{ (snap?.diskPercent ?? 0).toFixed(0) }}%</span>
+          <span class="card-title">{{ activeDisk ? activeDisk.name : t('monitor.disk') }}</span>
+          <div v-if="(snap?.disks?.length ?? 0) > 1" class="disk-tabs">
+            <button
+              v-for="(d, idx) in snap?.disks"
+              :key="d.mountPoint"
+              type="button"
+              class="disk-tab-btn"
+              :class="{ 'disk-tab-btn--active': currentDiskIdx === idx }"
+              @click="currentDiskIdx = idx"
+            >
+              {{ d.mountPoint.replace('\\', '') }}
+            </button>
+          </div>
+          <span class="percent-badge">{{ (activeDisk?.percent ?? snap?.diskPercent ?? 0).toFixed(0) }}%</span>
         </div>
         <div class="value">
-          {{ formatBytes(snap?.diskUsed ?? 0) }} / {{ formatBytes(snap?.diskTotal ?? 0) }}
+          {{ formatBytes(activeDisk?.usedSpace ?? snap?.diskUsed ?? 0) }} / {{ formatBytes(activeDisk?.totalSpace ?? snap?.diskTotal ?? 0) }}
         </div>
         <div class="bar">
-          <span class="bar-fill--amber" :style="{ width: `${snap?.diskPercent ?? 0}%` }" />
+          <span class="bar-fill--amber" :style="{ width: `${activeDisk?.percent ?? snap?.diskPercent ?? 0}%` }" />
         </div>
       </div>
 
@@ -476,6 +497,35 @@ onUnmounted(() => store.stopPolling());
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.disk-tabs {
+  display: inline-flex;
+  gap: 3px;
+  background: var(--muted);
+  padding: 2px;
+  border-radius: 6px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+.disk-tab-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.disk-tab-btn:hover {
+  color: var(--foreground);
+}
+.disk-tab-btn--active {
+  background: var(--card);
+  color: #d97706;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .spin {

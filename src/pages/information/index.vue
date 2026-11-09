@@ -132,16 +132,33 @@ onUnmounted(() => {
       <section class="card">
         <div class="card-top">
           <HardDrive :size="18" />
-          <span>{{ t('information.disk') }}</span>
+          <span>{{ (store.info.logicalDisks?.length ?? 0) > 1 ? t('information.storage') : t('information.disk') }}</span>
         </div>
-        <p class="lead">{{ store.info.diskDevice }}</p>
-        <p>{{ store.info.diskType }}</p>
-        <p>
-          {{ formatBytes(store.info.diskUsed) }} / {{ formatBytes(store.info.diskTotal) }} ({{
-            store.info.diskPercent.toFixed(1)
-          }}%)
-        </p>
-        <p>Free: {{ formatBytes(store.info.diskFree) }}</p>
+        <div v-if="store.info.logicalDisks && store.info.logicalDisks.length > 0" class="logical-disks">
+          <div v-for="d in store.info.logicalDisks" :key="d.deviceId" class="logical-disk-row">
+            <div class="disk-meta">
+              <span class="disk-name">{{ d.deviceId }} <span v-if="d.volumeName" class="volume-name">[{{ d.volumeName }}]</span></span>
+              <span class="disk-pct">{{ d.percent.toFixed(1) }}%</span>
+            </div>
+            <div class="disk-bar">
+              <div class="disk-bar-fill" :style="{ width: `${Math.min(100, Math.max(0, d.percent))}%` }" />
+            </div>
+            <div class="disk-sub">
+              <span>{{ formatBytes(d.usedBytes) }} / {{ formatBytes(d.totalBytes) }}</span>
+              <span class="muted">Free: {{ formatBytes(d.freeBytes) }}</span>
+            </div>
+          </div>
+        </div>
+        <template v-else>
+          <p class="lead">{{ store.info.diskDevice }}</p>
+          <p>{{ store.info.diskType }}</p>
+          <p>
+            {{ formatBytes(store.info.diskUsed) }} / {{ formatBytes(store.info.diskTotal) }} ({{
+              store.info.diskPercent.toFixed(1)
+            }}%)
+          </p>
+          <p>Free: {{ formatBytes(store.info.diskFree) }}</p>
+        </template>
       </section>
 
       <section class="card">
@@ -191,14 +208,24 @@ onUnmounted(() => {
 
       <section class="card">
         <div class="card-top">
-          <Zap :size="18" />
-          <span>{{ t('information.powerSupply') }}</span>
+          <Battery v-if="store.info.isLaptop || store.info.batteries.length" :size="18" />
+          <Zap v-else :size="18" />
+          <span>{{ store.info.isLaptop || store.info.batteries.length ? (t('information.battery') + ' / ' + t('information.power')) : t('information.powerSupply') }}</span>
         </div>
-        <p class="lead">{{ store.info.powerSupplyName }}</p>
-        <p v-if="store.info.batteries.length" class="with-icon">
-          <Battery :size="14" />
-          {{ store.info.batteries.join(' · ') }}
-        </p>
+        <div v-if="store.info.batteries.length" class="battery-section">
+          <p v-for="(b, i) in store.info.batteries" :key="i" class="lead with-icon">
+            <Battery :size="16" />
+            <span>{{ b }}</span>
+          </p>
+          <p v-if="store.info.powerSupplyName && !store.info.powerSupplyName.includes('Not reported')" class="muted">
+            PSU: {{ store.info.powerSupplyName }}
+          </p>
+          <p v-if="store.info.isLaptop" class="device-tag">💻 Laptop System</p>
+        </div>
+        <template v-else>
+          <p class="lead">{{ store.info.powerSupplyName }}</p>
+          <p class="muted">{{ t('information.psuUnavailable') }}</p>
+        </template>
       </section>
 
       <section class="card">
@@ -295,6 +322,76 @@ p {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.logical-disks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.logical-disk-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--border) 60%, transparent);
+}
+.logical-disk-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.disk-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8125rem;
+}
+.disk-name {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.volume-name {
+  font-weight: 500;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.disk-pct {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--primary);
+}
+.disk-bar {
+  width: 100%;
+  height: 6px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.disk-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.disk-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+.battery-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.device-tag {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font-weight: 500;
+  width: fit-content;
 }
 .state {
   color: var(--muted-foreground);

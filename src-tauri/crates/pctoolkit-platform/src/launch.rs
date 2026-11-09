@@ -113,7 +113,7 @@ fn elevate(program: &str) -> PlatformResult<()> {
         "Start-Process -FilePath '{}' -Verb RunAs -WorkingDirectory $env:SystemRoot\\System32",
         program.replace('\'', "''")
     );
-    let mut cmd = Command::new("powershell");
+    let mut cmd = crate::process::powershell_cmd();
     cmd.args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script]);
     crate::process::hide_console(&mut cmd);
     cmd.spawn()

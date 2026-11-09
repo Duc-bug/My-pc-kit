@@ -2,6 +2,25 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { CleanerCategory, QuickActionId, PowerAction } from '@/lib/models/actions';
 
+export interface DiskInfo {
+  name: string;
+  mountPoint: string;
+  totalSpace: number;
+  usedSpace: number;
+  availableSpace: number;
+  percent: number;
+}
+
+export interface LogicalDiskInfo {
+  deviceId: string;
+  volumeName: string;
+  fileSystem: string;
+  totalBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+  percent: number;
+}
+
 export interface MonitorSnapshot {
   cpu: number;
   memoryPercent: number;
@@ -17,6 +36,7 @@ export interface MonitorSnapshot {
   gpuMemoryUsed?: number | null;
   gpuMemoryTotal?: number | null;
   gpuTemperature?: number | null;
+  disks?: DiskInfo[];
 }
 
 export interface CleanupScanItem {
@@ -72,6 +92,8 @@ export interface SystemInformation {
   diskPercent: number;
   diskDevice: string;
   diskType: string;
+  logicalDisks?: LogicalDiskInfo[];
+  isLaptop?: boolean;
   gpuName: string;
   gpuUsage?: number | null;
   gpuMemoryUsed?: number | null;

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
+
 
 use crate::gpu::sample_nvidia;
 use crate::monitor::sample_monitor;
@@ -13,6 +13,18 @@ pub struct SystemInfoProgress {
     pub current: u64,
     pub total: u64,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LogicalDiskInfo {
+    pub device_id: String,
+    pub volume_name: String,
+    pub file_system: String,
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub free_bytes: u64,
+    pub percent: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -40,6 +52,8 @@ pub struct SystemInformation {
     pub disk_percent: f32,
     pub disk_device: String,
     pub disk_type: String,
+    pub logical_disks: Vec<LogicalDiskInfo>,
+    pub is_laptop: bool,
     pub gpu_name: String,
     pub gpu_usage: Option<f32>,
     pub gpu_memory_used: Option<u64>,
@@ -97,6 +111,8 @@ struct HwFacts {
     storage_devices: Vec<String>,
     monitors: Vec<String>,
     gpu_name: String,
+    logical_disks: Vec<LogicalDiskInfo>,
+    is_laptop: bool,
     board_product: String,
     board_manufacturer: String,
     board_version: String,
@@ -240,8 +256,13 @@ pub fn load_system_information_with_progress(
     let hostname = sysinfo::System::host_name().unwrap_or_default();
     let username = std::env::var("USERNAME").unwrap_or_default();
 
-    let power_supply_name = non_empty(&facts.power_supply_name)
-        .unwrap_or_else(|| "Not reported by Windows".into());
+    let power_supply_name = if !facts.batteries.is_empty() {
+        format!("{} ({})", non_empty(&facts.ac_line_status).unwrap_or_else(|| "Online (AC Power)".into()), facts.batteries.join(", "))
+    } else if let Some(psu) = non_empty(&facts.power_supply_name) {
+        psu
+    } else {
+        "Desktop PC (AC Power)".into()
+    };
 
     let mut info = SystemInformation {
         uptime: uptime.clone(),
@@ -270,6 +291,8 @@ pub fn load_system_information_with_progress(
         disk_percent: sample.disk_percent,
         disk_device: non_empty(&facts.disk_device).unwrap_or_else(|| "Unknown".into()),
         disk_type: non_empty(&facts.disk_type).unwrap_or_else(|| "Unknown".into()),
+        logical_disks: facts.logical_disks.clone(),
+        is_laptop: facts.is_laptop,
         gpu_name: gpu_name.clone(),
         gpu_usage: nvidia.as_ref().map(|g| g.utilization),
         gpu_memory_used: nvidia.as_ref().map(|g| g.memory_used),
@@ -368,9 +391,29 @@ fn build_copy_text(info: &SystemInformation) -> String {
         info.batteries.join("\n")
     };
 
+    let mut logical_disks_block = String::new();
+    if !info.logical_disks.is_empty() {
+        logical_disks_block.push_str("\nLogical Drives:\n");
+        for d in &info.logical_disks {
+            let used_gb = d.used_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            let total_gb = d.total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            let free_gb = d.free_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            let vol = if d.volume_name.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", d.volume_name)
+            };
+            logical_disks_block.push_str(&format!(
+                "  - {}{} ({}) : {:.1} GB / {:.1} GB ({:.1}%, Free: {:.1} GB)\n",
+                d.device_id, vol, d.file_system, used_gb, total_gb, d.percent, free_gb
+            ));
+        }
+    }
+
     format!(
         "My PC Kit — System Information\n\
-         ================================\n\n\
+         ================================\n\
+         Device Type: {dev_type}\n\n\
          Processor Information:\n\
          ----------------------\n\
          Processor: {cpu}\n\
@@ -385,7 +428,8 @@ fn build_copy_text(info: &SystemInformation) -> String {
          Storage Type: {disk_type}\n\
          Local Disk (C:) Total: {disk_used:.1} GB / {disk_total:.1} GB\n\
          Local Disk (C:) Free: {disk_free:.1} GB\n\
-         Local Disk (C:) Usage: {disk_pct:.1}%\n\n\
+         Local Disk (C:) Usage: {disk_pct:.1}%\n\
+         {logical_disks_block}\n\
          Memory Information:\n\
          ----------------------\n\
          Ram Total: {mem_total:.1} GB\n\
@@ -434,6 +478,8 @@ fn build_copy_text(info: &SystemInformation) -> String {
          OS Build: {os_build}\n\
          OS Experience: {os_exp}\n\
          Uptime: {uptime}\n",
+        dev_type = if info.is_laptop { "Laptop" } else { "Desktop / Tower" },
+        logical_disks_block = logical_disks_block,
         cpu = info.cpu_name,
         cores = info.cpu_cores,
         threads = info.cpu_threads,
@@ -551,10 +597,10 @@ if ($cimMon.Count -gt 0 -or $vcMon.Count -gt 0) {
   if ($vcMon.Count -gt 0) {
     foreach ($m in $vcMon) {
       $n++
-      $name = (($m.UserFriendlyName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join '').Trim()
-      $mfr = (($m.ManufacturerName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ }) -join '').Trim()
-      if (-not $name) { $name = "Monitor $n" }
-      if (-not $mfr) { $mfr = 'Unknown' }
+      $name = (($m.UserFriendlyName | Where-Object { $_ -gt 31 -and $_ -lt 127 } | ForEach-Object { [char]$_ }) -join '').Trim()
+      $mfr = (($m.ManufacturerName | Where-Object { $_ -gt 31 -and $_ -lt 127 } | ForEach-Object { [char]$_ }) -join '').Trim()
+      if (-not $name) { $name = "Internal Display" }
+      if (-not $mfr) { $mfr = 'Generic' }
       $monitors += ("{0} | {1}" -f $name, $mfr)
     }
   } else {
@@ -612,9 +658,29 @@ if (-not $b) { $ac = 'Online (no battery device)' }
 elseif ($b.BatteryStatus -eq 1) { $ac = 'Offline (on battery)' }
 elseif ($b.BatteryStatus -eq 2 -or $b.BatteryStatus -eq 3 -or $b.BatteryStatus -ge 6) { $ac = 'Online (AC power)' }
 
+$logicalDisks = @(Get-CimInstance Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.Size -gt 0 } | ForEach-Object {
+  $free = if ($_.FreeSpace) { [double]$_.FreeSpace } else { 0 }
+  $total = if ($_.Size) { [double]$_.Size } else { 0 }
+  $pct = if ($total -gt 0) { [math]::Round(($total - $free) / $total * 100, 1) } else { 0 }
+  [pscustomobject]@{
+    deviceId = $_.DeviceID
+    volumeName = if ($_.VolumeName) { $_.VolumeName } else { 'Local Disk' }
+    fileSystem = $(if ($_.FileSystem) { $_.FileSystem } else { 'NTFS' })
+    totalBytes = [uint64]$total
+    usedBytes = [uint64]($total - $free)
+    freeBytes = [uint64]$free
+    percent = [double]$pct
+  }
+})
+
 $cv = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
 $maxMemGb = 0
 if ($pa -and $pa.MaxCapacity) { $maxMemGb = [math]::Round($pa.MaxCapacity / 1MB, 0) }
+
+$isLaptop = ($null -ne $b)
+if ($isLaptop -and $b.EstimatedChargeRemaining) {
+  $ac = "$ac (Battery: $($b.EstimatedChargeRemaining)%)"
+}
 
 [pscustomobject]@{
   cpuName = $cpu.Name
@@ -635,6 +701,8 @@ if ($pa -and $pa.MaxCapacity) { $maxMemGb = [math]::Round($pa.MaxCapacity / 1MB,
   diskType = $media
   diskTotalGb = [double]$(if ($disk -and $disk.Size) { [math]::Round($disk.Size/1GB,1) } else { 0 })
   diskFreeGb = [double]$(if ($disk -and $disk.FreeSpace) { [math]::Round($disk.FreeSpace/1GB,1) } else { 0 })
+  logicalDisks = @($logicalDisks)
+  isLaptop = $isLaptop
   storageDevices = @($storage)
   monitors = @($monitors)
   gpuName = $gpuName
@@ -658,7 +726,7 @@ if ($pa -and $pa.MaxCapacity) { $maxMemGb = [math]::Round($pa.MaxCapacity / 1MB,
 } | ConvertTo-Json -Compress
 "#;
 
-    let mut cmd = Command::new("powershell");
+    let mut cmd = crate::process::powershell_cmd();
     cmd.args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", script]);
     crate::process::hide_console(&mut cmd);
     let output = cmd.output().ok()?;
@@ -712,7 +780,7 @@ fn non_empty(s: &str) -> Option<String> {
 }
 
 fn query_ps(expression: &str) -> Option<String> {
-    let mut cmd = Command::new("powershell");
+    let mut cmd = crate::process::powershell_cmd();
     cmd.args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", expression]);
     crate::process::hide_console(&mut cmd);
     let output = cmd.output().ok()?;

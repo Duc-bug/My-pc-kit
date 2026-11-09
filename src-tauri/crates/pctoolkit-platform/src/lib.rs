@@ -17,7 +17,7 @@ pub use memory::{
     free_physical_memory_bytes, memory_stats, optimize_memory, optimize_memory_areas,
     ordered_areas, AreaOutcome, AreaStatus, MemoryArea, MemoryOptimizeResult, MemoryStats,
 };
-pub use monitor::{is_user_admin, require_admin, sample_monitor, MonitorSample, OsLabel};
+pub use monitor::{is_user_admin, require_admin, sample_monitor, DiskInfo, MonitorSample, OsLabel};
 pub use power::{cancel_scheduled_shutdown, execute_power_action, schedule_shutdown, PowerAction};
 pub use process::{
     close_processes, hide_console, probe_running_processes, ProcessCloseBatchResult,
@@ -25,6 +25,6 @@ pub use process::{
 };
 pub use recycle::{empty_recycle_bin, query_recycle_bin, RecycleBinEmptyResult, RecycleBinInfo};
 pub use system_info::{
-    load_system_information, load_system_information_with_progress, SystemInfoProgress,
-    SystemInformation,
+    load_system_information, load_system_information_with_progress, LogicalDiskInfo,
+    SystemInfoProgress, SystemInformation,
 };

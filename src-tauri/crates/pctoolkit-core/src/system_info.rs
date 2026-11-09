@@ -1,5 +1,5 @@
 use pctoolkit_platform::{
-    load_system_information_with_progress, SystemInfoProgress, SystemInformation,
+    load_system_information_with_progress, LogicalDiskInfo, SystemInfoProgress, SystemInformation,
 };
 use serde::Serialize;
 
@@ -30,6 +30,8 @@ pub struct SystemInformationDto {
     pub disk_percent: f32,
     pub disk_device: String,
     pub disk_type: String,
+    pub logical_disks: Vec<LogicalDiskInfo>,
+    pub is_laptop: bool,
     pub gpu_name: String,
     pub gpu_usage: Option<f32>,
     pub gpu_memory_used: Option<u64>,
@@ -98,6 +100,8 @@ fn to_dto(info: SystemInformation) -> SystemInformationDto {
         disk_percent: info.disk_percent,
         disk_device: info.disk_device,
         disk_type: info.disk_type,
+        logical_disks: info.logical_disks,
+        is_laptop: info.is_laptop,
         gpu_name: info.gpu_name,
         gpu_usage: info.gpu_usage,
         gpu_memory_used: info.gpu_memory_used,

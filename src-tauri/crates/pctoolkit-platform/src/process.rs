@@ -21,6 +21,21 @@ pub fn hide_console(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
+/// Returns a Command configured to run Windows PowerShell with full path resolution.
+pub fn powershell_cmd() -> Command {
+    let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
+    let sys_ps = format!("{}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", sys_root);
+    if std::path::Path::new(&sys_ps).exists() {
+        return Command::new(sys_ps);
+    }
+    if let Ok(output) = Command::new("pwsh.exe").arg("-v").output() {
+        if output.status.success() {
+            return Command::new("pwsh.exe");
+        }
+    }
+    Command::new("powershell.exe")
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunningProcessGroup {

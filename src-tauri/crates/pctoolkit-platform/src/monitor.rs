@@ -37,6 +37,17 @@ fn cached_gpu_sample() -> Option<crate::gpu::GpuSample> {
     guard.sample.clone()
 }
 
+#[derive(Debug, Clone, Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DiskInfo {
+    pub name: String,
+    pub mount_point: String,
+    pub total_space: u64,
+    pub used_space: u64,
+    pub available_space: u64,
+    pub percent: f32,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MonitorSample {
@@ -54,6 +65,7 @@ pub struct MonitorSample {
     pub gpu_memory_used: Option<u64>,
     pub gpu_memory_total: Option<u64>,
     pub gpu_temperature: Option<f32>,
+    pub disks: Vec<DiskInfo>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -95,6 +107,28 @@ pub fn sample_monitor() -> PlatformResult<MonitorSample> {
     };
 
     let disks = Disks::new_with_refreshed_list();
+    let mut all_disks = Vec::new();
+    for d in disks.iter() {
+        let mount = d.mount_point().to_string_lossy().to_string();
+        let total = d.total_space();
+        let available = d.available_space();
+        let used = total.saturating_sub(available);
+        let percent = if total == 0 {
+            0.0
+        } else {
+            (used as f64 / total as f64 * 100.0) as f32
+        };
+        let name = d.name().to_string_lossy().to_string();
+        all_disks.push(DiskInfo {
+            name: if name.is_empty() { mount.clone() } else { name },
+            mount_point: mount,
+            total_space: total,
+            used_space: used,
+            available_space: available,
+            percent,
+        });
+    }
+
     let (disk_total, disk_used) = disks
         .iter()
         .find(|d| {
@@ -136,6 +170,7 @@ pub fn sample_monitor() -> PlatformResult<MonitorSample> {
         gpu_memory_used: gpu.as_ref().map(|g| g.memory_used),
         gpu_memory_total: gpu.as_ref().map(|g| g.memory_total),
         gpu_temperature: gpu.as_ref().map(|g| g.temperature),
+        disks: all_disks,
     })
 }
 
