@@ -217,3 +217,78 @@ pub fn close_processes(names: &[String], force: bool) -> PlatformResult<ProcessC
     targets.sort_by(|a, b| a.image_name.cmp(&b.image_name));
     Ok(ProcessCloseBatchResult { targets })
 }
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopProcessInfo {
+    pub pid: u32,
+    pub name: String,
+    pub cpu_percent: f32,
+    pub memory_bytes: u64,
+    pub memory_mb: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessActionLog {
+    pub success: bool,
+    pub command: String,
+    pub output: String,
+}
+
+/// Retrieve top active processes sorted by memory usage or CPU load.
+pub fn get_top_resource_processes(limit: usize) -> Vec<TopProcessInfo> {
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::All, true);
+    // Sleep briefly to calculate CPU delta
+    thread::sleep(Duration::from_millis(150));
+    sys.refresh_processes(ProcessesToUpdate::All, true);
+
+    let mut list = Vec::new();
+    for (pid, proc) in sys.processes() {
+        let name = proc.name().to_string_lossy().to_string();
+        if name.is_empty() || name == "System Idle Process" || name == "System" {
+            continue;
+        }
+        let mem = proc.memory();
+        let cpu = proc.cpu_usage();
+        list.push(TopProcessInfo {
+            pid: pid.as_u32(),
+            name,
+            cpu_percent: (cpu * 10.0).round() / 10.0,
+            memory_bytes: mem,
+            memory_mb: (mem as f64 / (1024.0 * 1024.0) * 10.0).round() / 10.0,
+        });
+    }
+
+    // Sort descending by memory usage first, then CPU
+    list.sort_by(|a, b| b.memory_bytes.cmp(&a.memory_bytes));
+    list.truncate(limit);
+    list
+}
+
+/// Terminate a process by PID with real-time execution log output.
+pub fn terminate_process_by_pid(pid: u32) -> ProcessActionLog {
+    let cmd_str = format!("taskkill /F /PID {pid}");
+    let mut cmd = Command::new("taskkill");
+    cmd.args(["/F", "/PID", &pid.to_string()]);
+    hide_console(&mut cmd);
+
+    match cmd.output() {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            let combined = if stderr.is_empty() { stdout } else { format!("{stdout}\n{stderr}") };
+            ProcessActionLog {
+                success: out.status.success(),
+                command: cmd_str,
+                output: combined,
+            }
+        }
+        Err(e) => ProcessActionLog {
+            success: false,
+            command: cmd_str,
+            output: format!("Execution failed: {e}"),
+        },
+    }
+}

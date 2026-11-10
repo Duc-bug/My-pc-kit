@@ -3,6 +3,7 @@ pub mod error;
 pub mod history;
 pub mod memory;
 pub mod monitor;
+pub mod network;
 pub mod power;
 pub mod process;
 pub mod quick_actions;

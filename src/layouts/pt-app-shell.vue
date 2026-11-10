@@ -8,6 +8,7 @@ import { PAGE_IDS, type PageId } from '@/lib/models/application-shell';
 import PtSidebar from './components/pt-sidebar.vue';
 import PtWindowTitlebar from './components/pt-window-titlebar.vue';
 import PtConfirmDialog from '@/components/custom/pt-confirm-dialog.vue';
+import PtExecutionDrawer from '@/components/custom/pt-execution-drawer.vue';
 import MonitorPage from '@/pages/monitor/index.vue';
 
 const CleanerPage = defineAsyncComponent(() => import('@/pages/cleaner/index.vue'));
@@ -99,6 +100,8 @@ watch(
       @confirm="memory.confirmElevationRestart()"
       @cancel="memory.declineElevationContinue()"
     />
+
+    <PtExecutionDrawer />
   </div>
 </template>
 

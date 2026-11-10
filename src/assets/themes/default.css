@@ -1,42 +1,45 @@
 :root {
   /*
-   * Modern Bright & Clean Light Theme for My PC Kit.
-   * Crisp white surfaces, subtle slate borders, vibrant modern blue accents.
+   * Industrial Dark Mode Bento Grid Design System for My PC Kit.
+   * Deep Obsidian background, glassy translucent cards, high-contrast monospace typography.
    */
-  --brand-primary: #2563eb;
-  --brand-primary-foreground: #ffffff;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Accent Palette */
+  --accent-cyan: #06b6d4;      /* CPU */
+  --accent-purple: #8b5cf6;    /* RAM */
+  --accent-emerald: #10b981;   /* GPU / Healthy */
+  --accent-amber: #f59e0b;     /* Warning / Disk */
+  --accent-rose: #f43f5e;      /* Critical / Danger */
+
+  --brand-primary: #38bdf8;
+  --brand-primary-foreground: #090d16;
   --radius: 0.75rem;
 
-  /* Surfaces: Sáng sủa, sạch sẽ, không ngả vàng hay đục */
+  /* Light Theme (Fallback / Toggleable) */
   --background: #f8fafc;
   --workspace: #ffffff;
   --foreground: #0f172a;
-  
   --card: #ffffff;
+  --card-glass: rgba(255, 255, 255, 0.85);
   --card-foreground: var(--foreground);
-  
-  --primary: var(--brand-primary);
-  --primary-foreground: var(--brand-primary-foreground);
-  
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #334155;
-  
   --muted: #f8fafc;
   --muted-foreground: #64748b;
-  
   --accent: #eff6ff;
   --accent-foreground: #1d4ed8;
-  
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  
   --border: #e2e8f0;
-  
+  --border-hover: rgba(59, 130, 246, 0.5);
   --sidebar: #f8fafc;
   --sidebar-foreground: #1e293b;
   --sidebar-accent: #eff6ff;
   --sidebar-accent-foreground: #2563eb;
-  
   --success: #10b981;
   --warning: #f59e0b;
   --surface-soft: #f8fafc;
@@ -45,24 +48,35 @@
 
 html[data-theme='dark'] {
   color-scheme: dark;
-  --background: #0f172a;
-  --workspace: #1e293b;
-  --foreground: #f8fafc;
-  --card: #1e293b;
+  /* Deep Obsidian Background */
+  --background: #090d16;
+  --workspace: #090d16;
+  --foreground: #f1f5f9;
+
+  /* Industrial Bento Glass Card */
+  --card: #111827;
+  --card-glass: rgba(17, 24, 39, 0.75);
+  --card-foreground: #f8fafc;
+
   --primary: #38bdf8;
-  --primary-foreground: #0f172a;
-  --secondary: #334155;
+  --primary-foreground: #090d16;
+  --secondary: #1f2937;
   --secondary-foreground: #f1f5f9;
-  --muted: #1e293b;
+  --muted: #111827;
   --muted-foreground: #94a3b8;
-  --accent: #1e3a8a;
-  --accent-foreground: #93c5fd;
-  --destructive: #f87171;
-  --border: #334155;
-  --sidebar: #0f172a;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-accent: #1e293b;
+  --accent: #1e293b;
+  --accent-foreground: #38bdf8;
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
+
+  /* 1px subtle white border, glow on hover */
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(59, 130, 246, 0.4);
+
+  --sidebar: #090d16;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-accent: rgba(56, 189, 248, 0.1);
   --sidebar-accent-foreground: #38bdf8;
-  --surface-soft: #1e293b;
-  --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.4);
+  --surface-soft: #111827;
+  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }

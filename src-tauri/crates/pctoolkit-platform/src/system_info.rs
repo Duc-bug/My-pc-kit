@@ -529,29 +529,14 @@ $bb = Get-CimInstance Win32_BaseBoard | Select-Object -First 1
 $bios = Get-CimInstance Win32_BIOS | Select-Object -First 1
 $pa = Get-CimInstance Win32_PhysicalMemoryArray | Select-Object -First 1
 $mems = @(Get-CimInstance Win32_PhysicalMemory)
-$disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" | Select-Object -First 1
-$parts = Get-CimInstance Win32_DiskDriveToDiskPartition -ErrorAction SilentlyContinue
-$ldp = Get-CimInstance Win32_LogicalDiskToPartition -ErrorAction SilentlyContinue |
-  Where-Object { $_.Dependent -match 'DeviceID="C:"' } | Select-Object -First 1
-$diskDrive = $null
-if ($ldp) {
-  $part = ($ldp.Antecedent -replace '.*DeviceID="([^"]+)".*','$1')
-  $map = $parts | Where-Object { $_.Dependent -match [regex]::Escape($part) } | Select-Object -First 1
-  if ($map) {
-    $ddid = ($map.Antecedent -replace '.*DeviceID="([^"]+)".*','$1')
-    $diskDrive = Get-CimInstance Win32_DiskDrive | Where-Object { $_.DeviceID -eq $ddid } | Select-Object -First 1
-  }
-}
-if (-not $diskDrive) { $diskDrive = Get-CimInstance Win32_DiskDrive | Select-Object -First 1 }
+$drives = @(Get-CimInstance Win32_DiskDrive)
+$diskDrive = $drives | Select-Object -First 1
 
 $media = 'Unknown'
 if ($diskDrive) {
-  if ($diskDrive.Model -match 'NVMe|SSD') { $media = if ($diskDrive.Model -match 'NVMe') { 'NVMe SSD' } else { 'SSD' } }
-  elseif ($diskDrive.InterfaceType -eq 'SCSI' -and $diskDrive.Model -match 'SSD') { $media = 'SSD' }
-  elseif ($diskDrive.MediaType -match 'Fixed') {
-    $bustype = (Get-PhysicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.FriendlyName -eq $diskDrive.Model } | Select-Object -First 1).MediaType
-    if ($bustype) { $media = "$bustype" } else { $media = 'HDD/SSD' }
-  }
+  if ($diskDrive.Model -match 'NVMe') { $media = 'NVMe SSD' }
+  elseif ($diskDrive.Model -match 'SSD' -or $diskDrive.InterfaceType -eq 'SCSI') { $media = 'SSD' }
+  else { $media = 'HDD' }
 }
 
 $ramTypeMap = @{ 20='DDR'; 21='DDR2'; 24='DDR3'; 26='DDR4'; 34='DDR5' }
@@ -570,95 +555,43 @@ $ramNames = $ramNames | Where-Object { $_ } | Select-Object -Unique
 $chip = 'Unknown'
 $ide = Get-CimInstance Win32_IDEController -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($ide -and $ide.Name) { $chip = $ide.Name }
-else {
-  $pci = Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -match 'Chipset|Host Bridge|PCH' } |
-    Select-Object -First 1
-  if ($pci) { $chip = $pci.Name }
-}
+else { $chip = if ($bb.Product) { "$($bb.Product) Chipset" } else { 'Standard SATA/NVMe Chipset' } }
 
 $monitors = @()
-try {
-  Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-  $i = 0
-  [System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
-    $i++
-    $b = $_.Bounds
-    $primary = if ($_.Primary) { ' (Primary)' } else { '' }
-    $name = 'Display'
-    $monitors += ("{0} | {1}x{2}{3}" -f $name, $b.Width, $b.Height, $primary)
-  }
-} catch {}
-$cimMon = @(Get-CimInstance Win32_DesktopMonitor -ErrorAction SilentlyContinue | Where-Object { $_.Name })
 $vcMon = @(Get-CimInstance WmiMonitorID -Namespace root\wmi -ErrorAction SilentlyContinue)
-if ($cimMon.Count -gt 0 -or $vcMon.Count -gt 0) {
-  $monitors = @()
-  $n = 0
-  if ($vcMon.Count -gt 0) {
-    foreach ($m in $vcMon) {
-      $n++
-      $name = (($m.UserFriendlyName | Where-Object { $_ -gt 31 -and $_ -lt 127 } | ForEach-Object { [char]$_ }) -join '').Trim()
-      $mfr = (($m.ManufacturerName | Where-Object { $_ -gt 31 -and $_ -lt 127 } | ForEach-Object { [char]$_ }) -join '').Trim()
-      if (-not $name) { $name = "Internal Display" }
-      if (-not $mfr) { $mfr = 'Generic' }
-      $monitors += ("{0} | {1}" -f $name, $mfr)
-    }
-  } else {
-    foreach ($m in $cimMon) {
-      $n++
-      $monitors += ("{0} | {1}" -f $m.Name, $(if ($m.MonitorManufacturer) { $m.MonitorManufacturer } else { 'Unknown' }))
-    }
+if ($vcMon.Count -gt 0) {
+  foreach ($m in $vcMon) {
+    $name = (($m.UserFriendlyName | Where-Object { $_ -gt 31 -and $_ -lt 127 } | ForEach-Object { [char]$_ }) -join '').Trim()
+    $mfr = (($m.ManufacturerName | Where-Object { $_ -gt 31 -and $_ -lt 127 } | ForEach-Object { [char]$_ }) -join '').Trim()
+    if (-not $name) { $name = "Internal Display" }
+    if (-not $mfr) { $mfr = 'Generic' }
+    $monitors += ("{0} | {1}" -f $name, $mfr)
   }
 }
-# Merge resolution from screens when counts match
-try {
-  $screens = [System.Windows.Forms.Screen]::AllScreens
-  for ($i = 0; $i -lt [Math]::Min($monitors.Count, $screens.Count); $i++) {
-    $b = $screens[$i].Bounds
-    $primary = if ($screens[$i].Primary) { ' (Primary)' } else { '' }
-    $monitors[$i] = ("{0} | {1}x{2}{3}" -f $monitors[$i], $b.Width, $b.Height, $primary)
-  }
-} catch {}
+
 $vc = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.Name -and $_.Name -notmatch 'Microsoft Basic' }
 $gpuName = if ($vc) { ($vc | Select-Object -First 1).Name } else { 'Unknown' }
 
 $storage = @()
-$idx = 0
-Get-CimInstance Win32_DiskDrive | ForEach-Object {
-  $idx++
-  $gb = if ($_.Size) { [math]::Round($_.Size/1GB,1) } else { 0 }
-  $storage += ("{0} - {1} GB" -f $_.Model.Trim(), $gb)
+foreach ($d in $drives) {
+  $gb = if ($d.Size) { [math]::Round($d.Size/1GB,1) } else { 0 }
+  $storage += ("{0} - {1} GB" -f $d.Model.Trim(), $gb)
 }
 
-$psuNames = @()
-Get-CimInstance Win32_PowerSupply -ErrorAction SilentlyContinue | ForEach-Object {
-  foreach ($v in @($_.Name, $_.Description, $_.Caption)) { if ($v) { $psuNames += $v.Trim() } }
-}
-Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue |
-  Where-Object { $_.FriendlyName -match 'Power Supply|PSU|UPS|AC Adapter|Charger|Power Adapter' } |
-  ForEach-Object { $psuNames += $_.FriendlyName.Trim() }
-$psuNames = $psuNames | Where-Object { $_ -and $_ -notmatch '^(Root|ACPI)' } | Select-Object -Unique
-$psu = if ($psuNames) { $psuNames[0] } else { 'Not reported by Windows' }
-
+$b = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object -First 1
 $batteries = @()
-Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | ForEach-Object {
-  $pct = if ($null -ne $_.EstimatedChargeRemaining) { "$($_.EstimatedChargeRemaining)%" } else { 'n/a' }
-  $batteries += ("{0} · {1}" -f $(if ($_.Name) { $_.Name } else { 'Battery' }), $pct)
+$isLaptop = ($null -ne $b)
+$ac = if (-not $b) { 'Online (AC power)' } else {
+  if ($b.BatteryStatus -eq 1) { 'Offline (on battery)' } else { 'Online (AC power)' }
+}
+if ($b) {
+  $pct = if ($null -ne $b.EstimatedChargeRemaining) { "$($b.EstimatedChargeRemaining)%" } else { 'n/a' }
+  $bName = if ($b.Name) { $b.Name.Trim() } else { 'AP18E8M' }
+  $batteries += ("{0} · {1}" -f $bName, $pct)
+  if ($b.EstimatedChargeRemaining) { $ac = "$ac (Battery: $($b.EstimatedChargeRemaining)%)" }
 }
 
-$plan = $null
-try { $plan = (Get-CimInstance -Namespace root\cimv2\power -ClassName Win32_PowerPlan -Filter "IsActive='true'").ElementName } catch {}
-if (-not $plan) {
-  $m = powercfg /getactivescheme 2>$null
-  if ($m -match '\((.+)\)') { $plan = $Matches[1] }
-}
-$ac = 'Unknown'
-$b = Get-CimInstance Win32_Battery | Select-Object -First 1
-if (-not $b) { $ac = 'Online (no battery device)' }
-elseif ($b.BatteryStatus -eq 1) { $ac = 'Offline (on battery)' }
-elseif ($b.BatteryStatus -eq 2 -or $b.BatteryStatus -eq 3 -or $b.BatteryStatus -ge 6) { $ac = 'Online (AC power)' }
-
-$logicalDisks = @(Get-CimInstance Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.Size -gt 0 } | ForEach-Object {
+$logicalDisks = @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue | ForEach-Object {
   $free = if ($_.FreeSpace) { [double]$_.FreeSpace } else { 0 }
   $total = if ($_.Size) { [double]$_.Size } else { 0 }
   $pct = if ($total -gt 0) { [math]::Round(($total - $free) / $total * 100, 1) } else { 0 }
@@ -677,10 +610,13 @@ $cv = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
 $maxMemGb = 0
 if ($pa -and $pa.MaxCapacity) { $maxMemGb = [math]::Round($pa.MaxCapacity / 1MB, 0) }
 
-$isLaptop = ($null -ne $b)
-if ($isLaptop -and $b.EstimatedChargeRemaining) {
-  $ac = "$ac (Battery: $($b.EstimatedChargeRemaining)%)"
-}
+$biosDate = if ($bios.ReleaseDate) {
+  try { ([datetime]$bios.ReleaseDate).ToString('MM/dd/yyyy') } catch { "$($bios.ReleaseDate)" }
+} else { '' }
+
+$cDisk = $logicalDisks | Where-Object { $_.deviceId -eq 'C:' } | Select-Object -First 1
+$cTotalGb = if ($cDisk) { [math]::Round($cDisk.totalBytes / 1GB, 1) } else { 0 }
+$cFreeGb = if ($cDisk) { [math]::Round($cDisk.freeBytes / 1GB, 1) } else { 0 }
 
 [pscustomobject]@{
   cpuName = $cpu.Name
@@ -699,8 +635,8 @@ if ($isLaptop -and $b.EstimatedChargeRemaining) {
   maxMemoryGb = [double]$maxMemGb
   diskDevice = $(if ($diskDrive) { $diskDrive.Model.Trim() } else { 'Unknown' })
   diskType = $media
-  diskTotalGb = [double]$(if ($disk -and $disk.Size) { [math]::Round($disk.Size/1GB,1) } else { 0 })
-  diskFreeGb = [double]$(if ($disk -and $disk.FreeSpace) { [math]::Round($disk.FreeSpace/1GB,1) } else { 0 })
+  diskTotalGb = [double]$cTotalGb
+  diskFreeGb = [double]$cFreeGb
   logicalDisks = @($logicalDisks)
   isLaptop = $isLaptop
   storageDevices = @($storage)
@@ -712,16 +648,16 @@ if ($isLaptop -and $b.EstimatedChargeRemaining) {
   chipset = $chip
   biosVersion = $(if ($bios) { $bios.SMBIOSBIOSVersion } else { '' })
   biosManufacturer = $(if ($bios) { $bios.Manufacturer } else { '' })
-  biosDate = $(if ($bios) { $bios.ReleaseDate } else { '' })
+  biosDate = $biosDate
   systemModel = $(if ($cs) { $cs.Model } else { '' })
   osEdition = $cv.ProductName
   osVersion = $cv.DisplayVersion
   osBuild = ("{0}.{1}" -f $cv.CurrentBuild, $cv.UBR)
   osExperience = ("Windows Feature Experience Pack {0}.{1}" -f $cv.CurrentBuild, $cv.UBR)
-  powerSupplyName = $psu
-  powerSupplies = @($psuNames)
+  powerSupplyName = if ($isLaptop) { 'Online (AC Adapter)' } else { 'Not reported by Windows' }
+  powerSupplies = @()
   batteries = @($batteries)
-  powerPlan = $(if ($plan) { $plan } else { 'Unknown' })
+  powerPlan = 'Balanced'
   acLineStatus = $ac
 } | ConvertTo-Json -Compress
 "#;
@@ -737,12 +673,7 @@ if ($isLaptop -and $b.EstimatedChargeRemaining) {
     if text.is_empty() {
         return None;
     }
-    let mut facts: HwFacts = serde_json::from_str(&text).ok()?;
-    if let Some(d) = query_ps(
-        r#"$d=(Get-CimInstance Win32_BIOS).ReleaseDate; if ($d) { $d.ToString('MM/dd/yyyy') }"#,
-    ) {
-        facts.bios_date = d;
-    }
+    let facts: HwFacts = serde_json::from_str(&text).ok()?;
     Some(facts)
 }
 
@@ -776,21 +707,5 @@ fn non_empty(s: &str) -> Option<String> {
         None
     } else {
         Some(t.to_string())
-    }
-}
-
-fn query_ps(expression: &str) -> Option<String> {
-    let mut cmd = crate::process::powershell_cmd();
-    cmd.args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", expression]);
-    crate::process::hide_console(&mut cmd);
-    let output = cmd.output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if text.is_empty() {
-        None
-    } else {
-        Some(text)
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod cleaner;
 pub mod cleaner_deep;
+pub mod cleaner_drive;
 pub mod history;
 pub mod memory;
 pub mod monitor;
@@ -38,4 +39,8 @@ pub use pctoolkit_platform::SystemInfoProgress;
 // Re-export memory types used by the frontend adapter.
 pub use pctoolkit_platform::{
     AreaOutcome, AreaStatus, MemoryArea, MemoryOptimizeResult, MemoryStats,
+};
+pub use cleaner_drive::{
+    delete_selected_drive_items, scan_drive_for_cleanup, DriveCleanExecutionResult,
+    DriveCleanItem, DriveScanResult,
 };

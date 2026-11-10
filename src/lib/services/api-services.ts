@@ -2,6 +2,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { CleanerCategory, QuickActionId, PowerAction } from '@/lib/models/actions';
 
+export { invoke };
+
 export interface DiskInfo {
   name: string;
   mountPoint: string;
@@ -326,5 +328,113 @@ export class MemoryCleanerService {
 export class SettingsApi {
   static openAppDataFolder(): Promise<void> {
     return invoke('open_app_data_folder');
+  }
+}
+
+export interface NetworkAdapterInfo {
+  name: string;
+  description: string;
+  status: string;
+  macAddress: string;
+  ipv4Address: string;
+  gateway: string;
+  isDhcp: boolean;
+  dnsServers: string[];
+}
+
+export interface LatencyTargetResult {
+  name: string;
+  target: string;
+  latencyMs?: number;
+  status: string;
+}
+
+export interface DnsApplyResult {
+  success: boolean;
+  commandExecuted: string;
+  output: string;
+  error?: string;
+}
+
+export class NetworkService {
+  static getAdapters(): Promise<NetworkAdapterInfo[]> {
+    return invoke('get_network_info');
+  }
+
+  static getLatency(gatewayIp?: string): Promise<LatencyTargetResult[]> {
+    return invoke('get_network_latency', { gatewayIp });
+  }
+
+  static setDnsConfiguration(options: {
+    interfaceName: string;
+    primaryDns?: string;
+    secondaryDns?: string;
+    useDhcp: boolean;
+    flushDns: boolean;
+  }): Promise<DnsApplyResult> {
+    return invoke('set_dns_configuration', {
+      interfaceName: options.interfaceName,
+      primaryDns: options.primaryDns ?? null,
+      secondaryDns: options.secondaryDns ?? null,
+      useDhcp: options.useDhcp,
+      flushDns: options.flushDns,
+    });
+  }
+}
+
+export interface TopProcessInfo {
+  pid: number;
+  name: string;
+  cpuPercent: number;
+  memoryBytes: number;
+  memoryMb: number;
+}
+
+export interface ProcessActionLog {
+  success: boolean;
+  command: string;
+  output: string;
+}
+
+export class ProcessService {
+  static getTopProcesses(limit?: number): Promise<TopProcessInfo[]> {
+    return invoke('get_top_resource_processes_command', { limit });
+  }
+
+  static terminateProcess(pid: number): Promise<ProcessActionLog> {
+    return invoke('terminate_process_command', { pid });
+  }
+}
+
+export interface DriveCleanItem {
+  id: string;
+  path: string;
+  name: string;
+  category: 'system_temp' | 'dev_gamer' | 'large_file';
+  sizeBytes: number;
+  isDir: boolean;
+  itemCount: number;
+}
+
+export interface DriveScanResult {
+  driveLetter: string;
+  items: DriveCleanItem[];
+  totalBytes: number;
+}
+
+export interface DriveCleanExecutionResult {
+  success: boolean;
+  deletedBytes: number;
+  deletedCount: number;
+  executionLog: string[];
+}
+
+export class DriveCleanerService {
+  static scanDrive(drive: string): Promise<DriveScanResult> {
+    return invoke('scan_drive_cleanup_candidates', { drive });
+  }
+
+  static executeCleanup(paths: string[]): Promise<DriveCleanExecutionResult> {
+    return invoke('execute_drive_cleanup', { paths });
   }
 }

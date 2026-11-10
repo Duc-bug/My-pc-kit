@@ -60,3 +60,23 @@ pub async fn execute_deep_cleanup_command(
 pub fn cancel_cleanup() {
     core_cancel();
 }
+
+#[tauri::command]
+pub async fn scan_drive_cleanup_candidates(
+    drive: String,
+) -> CommandResult<pctoolkit_core::DriveScanResult> {
+    run_blocking("scan_drive_cleanup_candidates", move || {
+        Ok::<_, pctoolkit_core::CoreError>(pctoolkit_core::scan_drive_for_cleanup(&drive))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn execute_drive_cleanup(
+    paths: Vec<String>,
+) -> CommandResult<pctoolkit_core::DriveCleanExecutionResult> {
+    run_blocking("execute_drive_cleanup", move || {
+        Ok::<_, pctoolkit_core::CoreError>(pctoolkit_core::delete_selected_drive_items(paths))
+    })
+    .await
+}
