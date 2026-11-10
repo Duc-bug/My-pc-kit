@@ -14,7 +14,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 export const useAppStore = defineStore('app', {
   state: () => ({
     currentPage: PAGE_IDS.monitor as PageId,
-    theme: 'dark' as ThemeMode,
+    theme: 'light' as ThemeMode,
     locale: (typeof window !== 'undefined' ? localStorage.getItem('pt-locale') || 'vi' : 'vi') as string,
     /** When true, sidebar stays expanded. When false, rail + hover peek. */
     sidebarPinned: createSidebarLayoutState(
@@ -41,7 +41,7 @@ export const useAppStore = defineStore('app', {
       }
       const raw = localStorage.getItem('pt-theme') as ThemeMode | null;
       const theme =
-        raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'dark';
+        raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'light';
       this.setTheme(theme);
       const pinned = localStorage.getItem('pt-sidebar-expanded');
       if (pinned != null) this.sidebarPinned = pinned === '1';
